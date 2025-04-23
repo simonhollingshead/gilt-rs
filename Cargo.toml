@@ -1,0 +1,25 @@
+[package]
+name = "gilt"
+version = "0.2.0"
+edition = "2024"
+description = "A binary for calculating the current best return from a UK Gilt."
+license = "MIT"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+panic = "abort"
+strip = "symbols"
+
+[dependencies]
+anyhow = "1"
+backon = "1"
+base64 = "0.22"
+chrono = "0.4"
+clap = { version = "4", features = ["cargo"] }
+comfy-table = "7"
+indoc = "2"
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+rust_decimal = { version = "1", features = ["maths", "serde"] }
+serde = { version = "1", features = ["derive"] }
+ua_generator = "0.5"
