@@ -42,6 +42,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    
+      - if: matrix.platform.runs-on == 'windows-11-arm'
+        name: Preinstall rustup for Windows ARM (https://github.com/actions/partner-runner-images/issues/77)
+        run: |
+            curl -LOs https://static.rust-lang.org/rustup/dist/aarch64-pc-windows-msvc/rustup-init.exe
+            ./rustup-init.exe -y --default-toolchain none --no-modify-path
+            echo "$USERPROFILE/.cargo/bin" >> "$GITHUB_PATH"
 
       - name: Build binary
         uses: houseabsolute/actions-rust-cross@f7da4010930154943c99d13df0151dece91a924f # v1.0.4
