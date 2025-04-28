@@ -6,6 +6,8 @@ updates:
       interval: "daily"
     assignees:
       - "simonhollingshead"
+    allow:
+      - dependency-type: "all"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
