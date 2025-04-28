@@ -1,0 +1,42 @@
+name: Release Binary
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    name: Release - ${{ matrix.platform.os-name }}
+    strategy:
+      matrix:
+        platform:
+          - os-name: Linux x86_64
+            runs-on: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+
+          - os-name: macOS x86_64
+            runs-on: macOS-latest
+            target: x86_64-apple-darwin
+
+          # more targets here ...
+
+    runs-on: ${{ matrix.platform.runs-on }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Build binary
+        uses: houseabsolute/actions-rust-cross@f7da4010930154943c99d13df0151dece91a924f # v1.0.4
+        with:
+          command: build
+          target: ${{ matrix.platform.target }}
+          args: "--locked --release"
+          strip: true
+
+      - name: Publish artifacts and release
+        uses: houseabsolute/actions-rust-release@48ce35fb40c3dab00791a3d6c485022341354c44 # v0.0.6
+        with:
+          executable-name: gilt
+          changes-file: 
+          target: ${{ matrix.platform.target }}
