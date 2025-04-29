@@ -9,7 +9,7 @@ updates:
     allow:
       - dependency-type: "all"
     groups:
-      all:
+      all-cargo-updates:
         patterns:
           - "*"
   - package-ecosystem: "github-actions"
