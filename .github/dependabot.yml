@@ -3,21 +3,13 @@ updates:
   - package-ecosystem: "cargo"
     directory: "/"
     schedule:
-      interval: "daily"
-    assignees:
-      - "simonhollingshead"
-    allow:
-      - dependency-type: "direct"
-  - package-ecosystem: "cargo"
-    directory: "/"
-    schedule:
       interval: "weekly"
     assignees:
       - "simonhollingshead"
     allow:
-      - dependency-type: "indirect"
+      - dependency-type: "all"
     groups:
-      indirect-dependencies:
+      all:
         patterns:
           - "*"
   - package-ecosystem: "github-actions"
