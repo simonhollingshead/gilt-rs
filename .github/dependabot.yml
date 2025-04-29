@@ -7,7 +7,19 @@ updates:
     assignees:
       - "simonhollingshead"
     allow:
-      - dependency-type: "all"
+      - dependency-type: "direct"
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    assignees:
+      - "simonhollingshead"
+    allow:
+      - dependency-type: "indirect"
+    groups:
+      indirect-dependencies:
+        patterns:
+          - "*"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
