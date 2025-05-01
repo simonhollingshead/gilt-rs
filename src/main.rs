@@ -259,7 +259,7 @@ fn calculate_gilt_returns(bonds: Vec<Bond>, income_tax_rate: Decimal) -> Vec<Tab
             {
                 num_periods += 1;
             }
-            assert!(num_periods > 0);  // This would have been filtered otherwise.
+            assert!(num_periods > 0); // This would have been filtered otherwise.
 
             let first_day_in_period = bond
                 .maturity_date
@@ -267,7 +267,7 @@ fn calculate_gilt_returns(bonds: Vec<Bond>, income_tax_rate: Decimal) -> Vec<Tab
                 .unwrap();
             let last_day_in_period = bond
                 .maturity_date
-                .checked_sub_months(Months::new((num_periods - 1) * 6))  // Requires num_periods > 0.
+                .checked_sub_months(Months::new((num_periods - 1) * 6)) // Requires num_periods > 0.
                 .unwrap()
                 .pred_opt()
                 .unwrap();
@@ -279,23 +279,23 @@ fn calculate_gilt_returns(bonds: Vec<Bond>, income_tax_rate: Decimal) -> Vec<Tab
             )
         };
 
-        // Officially the guidance is that the ex-dividend period is seven *business* days prior, but that's not strictly
-        // possible to calculate here.
-        let ex_dividend_period_starts = date_n_weekdays_before(last_day_in_period, 7);
+        // Interest payments go to the owner 7 business days before the payment.  This code is an approximation (7 weekdays).
+        // No ex-dividend period exists for the final dividend which is paid on the principal repayment date.
+        let ex_dividend_period_count_adjustment = if num_periods == Decimal::ONE
+            || today < date_n_weekdays_before(last_day_in_period, 7)
+        {
+            Decimal::ZERO // No adjustment to make, we will receive the repayment.
+        } else {
+            Decimal::NEGATIVE_ONE // We will not receive the upcoming payment.
+        };
 
         // Accrued interest is bought off the prior owner but is NOT subject to income tax.
         let days_through_period: Decimal = (today - first_day_in_period).num_days().into();
         let days_in_period: Decimal = (last_day_in_period - first_day_in_period).num_days().into();
         let coupon_rate = bond.coupon_percent * Decimal::new(1, 2); // e.g. 2 -> 0.02
         let period_coupon = coupon_rate * Decimal::new(5, 1); // Each 6-monthly period, only half the coupon is paid.
-        let ex_dividend_adjust =
-            if today >= ex_dividend_period_starts && today <= last_day_in_period {
-                Decimal::ONE
-            } else {
-                Decimal::ZERO
-            };
         // Note: This may end up negative, this is INTENTIONAL!
-        let accrued_interest = ((days_through_period / days_in_period) - ex_dividend_adjust)
+        let accrued_interest = ((days_through_period / days_in_period) + ex_dividend_period_count_adjustment)
             * period_coupon
             * bond.lot_size;
         let total_interest = period_coupon * num_periods * bond.lot_size;
