@@ -1,6 +1,7 @@
 name: Release Binary
 
 on:
+  pull_request:
   push:
     branches:
       - main
