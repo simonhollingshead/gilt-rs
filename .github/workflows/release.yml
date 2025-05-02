@@ -3,6 +3,8 @@ name: Release Binary
 on:
   pull_request:
   push:
+    paths-ignore:
+      - '.github/**'
     branches:
       - main
     tags:
