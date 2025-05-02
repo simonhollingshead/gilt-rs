@@ -1,6 +1,6 @@
 [package]
 name = "gilt"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 description = "A binary for calculating the current best return from a UK Gilt."
 license = "MIT"
