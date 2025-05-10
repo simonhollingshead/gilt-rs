@@ -66,6 +66,11 @@ jobs:
 
       - name: Install Rust Toolchain
         run: rustup toolchain install stable --profile minimal
+      
+      - name: Install cargo-sbom
+        uses: taiki-e/install-action@83254c543806f3224380bf1001d6fac8feaf2d0b # v2.50.10
+        with:
+          tool: cargo-sbom
 
       - name: Prepare Rust Cache
         uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
@@ -74,6 +79,9 @@ jobs:
       
       - name: Build
         run: cargo build --locked --release
+      
+      - name: Produce SBOM
+        run: cargo sbom --output-format=spdx_json_2_3 > sbom-spdx.json
 
       - name: Publish artifacts and release
         uses: houseabsolute/actions-rust-release@48ce35fb40c3dab00791a3d6c485022341354c44 # v0.0.6
@@ -84,12 +92,14 @@ jobs:
       
       - if: ${{ ! startsWith(matrix.platform.runs-on, 'windows-') }}
         name: Publish Attestation (non-Windows)
-        uses: actions/attest-build-provenance@db473fddc028af60658334401dc6fa3ffd8669fd # v2.3.0
+        uses: actions/attest-sbom@115c3be05ff3974bcbd596578934b3f9ce39bf68 # v2.2.0
         with:
           subject-path: ./${{ matrix.platform.archive-name }}.tar.gz, ./target/release/gilt
+          sbom-path: ./sbom-spdx.json
       
       - if: ${{ startsWith(matrix.platform.runs-on, 'windows-') }}
         name: Publish Attestation (Windows)
-        uses: actions/attest-build-provenance@db473fddc028af60658334401dc6fa3ffd8669fd # v2.3.0
+        uses: actions/attest-sbom@115c3be05ff3974bcbd596578934b3f9ce39bf68 # v2.2.0
         with:
           subject-path: .\${{ matrix.platform.archive-name }}.zip, .\target\release\gilt.exe
+          sbom-path: .\sbom-spdx.json
