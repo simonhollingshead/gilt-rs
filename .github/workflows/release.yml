@@ -25,26 +25,32 @@ jobs:
           - os-name: Linux x86_64
             runs-on: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            archive-name: gilt-linux-x86_64
 
           - os-name: Linux aarch64
             runs-on: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
+            archive-name: gilt-linux-aarch64
 
           - os-name: macOS x86_64
             runs-on: macos-13
             target: x86_64-apple-darwin
+            archive-name: gilt-macos-x86_64
 
           - os-name: macOS aarch64
             runs-on: macOS-latest
             target: aarch64-apple-darwin
+            archive-name: gilt-macos-aarch64
 
           - os-name: Windows x86_64
             runs-on: windows-latest
             target: x86_64-pc-windows-msvc
+            archive-name: gilt-windows-x86_64
 
           - os-name: Windows aarch64
             runs-on: windows-11-arm
             target: aarch64-pc-windows-msvc
+            archive-name: gilt-windows-aarch64
 
 
     runs-on: ${{ matrix.platform.runs-on }}
@@ -76,15 +82,20 @@ jobs:
           executable-name: gilt
           changes-file: 
           target: ${{ matrix.platform.target }}
+          archive-name: ${{ matrix.platform.archive-name }}
       
       - if: ${{ ! startsWith(matrix.platform.runs-on, 'windows-') }}
         name: Publish Attestation (non-Windows)
         uses: actions/attest-build-provenance@db473fddc028af60658334401dc6fa3ffd8669fd # v2.3.0
         with:
-          subject-path: "target/${{ matrix.platform.target }}/release/gilt"
+          subject-path: |
+            target\${{ matrix.platform.target }}\release\gilt
+            ${{ matrix.platform.target }}.tar.gz
       
       - if: ${{ startsWith(matrix.platform.runs-on, 'windows-') }}
         name: Publish Attestation (Windows)
         uses: actions/attest-build-provenance@db473fddc028af60658334401dc6fa3ffd8669fd # v2.3.0
         with:
-          subject-path: "target\\${{ matrix.platform.target }}\\release\\gilt.exe"
+          subject-path: |
+            target\${{ matrix.platform.target }}\release\gilt.exe
+            ${{ matrix.platform.target }}.zip
