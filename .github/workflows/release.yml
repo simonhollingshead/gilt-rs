@@ -66,7 +66,7 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: "--locked --release"
           strip: true
-          rust-cache-parameters: "{'save-if': ${{ github.ref == 'refs/heads/master' }}}"
+          rust-cache-parameters: "{\"save-if\": ${{ github.ref == 'refs/heads/main' }}}"
 
       - name: Publish artifacts and release
         uses: houseabsolute/actions-rust-release@48ce35fb40c3dab00791a3d6c485022341354c44 # v0.0.6
