@@ -1,0 +1,40 @@
+[graph]
+all-features = true
+
+[advisories]
+unmaintained = 'workspace'
+ignore = []
+
+[licenses]
+allow = [
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "CDLA-Permissive-2.0",
+    "ISC",
+    "MIT",
+    "Unicode-3.0",
+]
+confidence-threshold = 0.99
+
+[licenses.private]
+ignore = false
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+highlight = "all"
+deny = [
+    { crate = "openssl", use-instead = "rustls", reason = "breaks cross" },
+    { crate = "openssl-sys", use-instead = "rustls", reason = "breaks cross" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
+
+[sources.allow-org]
+github = []
+gitlab = []
+bitbucket = []
