@@ -1,8 +1,6 @@
 name: Check for Updates (dependencies affected by Dependabot Core issue 2064)
 
 on:
-  schedule:
-    - cron: "51 0 2 * *"
   workflow_dispatch:
 
 permissions:
