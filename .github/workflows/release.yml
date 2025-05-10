@@ -16,6 +16,9 @@ permissions:
   attestations: write
   contents: write
 
+env:
+  CARGO_INCREMENTAL: 0
+
 jobs:
   release:
     name: Release - ${{ matrix.platform.os-name }}
@@ -24,32 +27,26 @@ jobs:
         platform:
           - os-name: Linux x86_64
             runs-on: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
             archive-name: gilt-linux-x86_64
 
           - os-name: Linux aarch64
             runs-on: ubuntu-24.04-arm
-            target: aarch64-unknown-linux-gnu
             archive-name: gilt-linux-aarch64
 
           - os-name: macOS x86_64
             runs-on: macos-13
-            target: x86_64-apple-darwin
             archive-name: gilt-macos-x86_64
 
           - os-name: macOS aarch64
             runs-on: macOS-latest
-            target: aarch64-apple-darwin
             archive-name: gilt-macos-aarch64
 
           - os-name: Windows x86_64
             runs-on: windows-latest
-            target: x86_64-pc-windows-msvc
             archive-name: gilt-windows-x86_64
 
           - os-name: Windows aarch64
             runs-on: windows-11-arm
-            target: aarch64-pc-windows-msvc
             archive-name: gilt-windows-aarch64
 
 
@@ -67,31 +64,32 @@ jobs:
           "$env:USERPROFILE\.cargo\bin" | Out-File -Append -Encoding ascii $env:GITHUB_PATH
           "CARGO_HOME=$env:USERPROFILE\.cargo" | Out-File -Append -Encoding ascii $env:GITHUB_ENV
 
-      - name: Build binary
-        uses: houseabsolute/actions-rust-cross@f7da4010930154943c99d13df0151dece91a924f # v1.0.4
+      - name: Install Rust Toolchain
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Prepare Rust Cache
+        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
         with:
-          command: build
-          target: ${{ matrix.platform.target }}
-          args: "--locked --release"
-          strip: true
-          rust-cache-parameters: "{\"save-if\": ${{ github.ref == 'refs/heads/main' }}}"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      
+      - name: Build
+        run: cargo build --locked --release
 
       - name: Publish artifacts and release
         uses: houseabsolute/actions-rust-release@48ce35fb40c3dab00791a3d6c485022341354c44 # v0.0.6
         with:
           executable-name: gilt
           changes-file: 
-          target: ${{ matrix.platform.target }}
           archive-name: ${{ matrix.platform.archive-name }}
       
       - if: ${{ ! startsWith(matrix.platform.runs-on, 'windows-') }}
         name: Publish Attestation (non-Windows)
         uses: actions/attest-build-provenance@db473fddc028af60658334401dc6fa3ffd8669fd # v2.3.0
         with:
-          subject-path: ./${{ matrix.platform.archive-name }}.tar.gz, ./target/${{ matrix.platform.target }}/release/gilt
+          subject-path: ./${{ matrix.platform.archive-name }}.tar.gz, ./target/release/gilt
       
       - if: ${{ startsWith(matrix.platform.runs-on, 'windows-') }}
         name: Publish Attestation (Windows)
         uses: actions/attest-build-provenance@db473fddc028af60658334401dc6fa3ffd8669fd # v2.3.0
         with:
-          subject-path: .\\${{ matrix.platform.archive-name }}.zip, .\\target\${{ matrix.platform.target }}\release\gilt.exe
+          subject-path: .\${{ matrix.platform.archive-name }}.zip, .\target\release\gilt.exe
