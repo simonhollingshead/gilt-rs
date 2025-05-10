@@ -12,7 +12,9 @@ on:
       - "*"
 
 permissions:
-    contents: write
+  id-token: write
+  attestations: write
+  contents: write
 
 jobs:
   release:
