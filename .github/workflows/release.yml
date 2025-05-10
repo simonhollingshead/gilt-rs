@@ -87,6 +87,7 @@ jobs:
         uses: houseabsolute/actions-rust-release@48ce35fb40c3dab00791a3d6c485022341354c44 # v0.0.6
         with:
           executable-name: gilt
+          changes-file:
           extra-files: |
             README.md
             sbom-spdx.json
