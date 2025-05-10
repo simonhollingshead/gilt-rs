@@ -4,7 +4,10 @@ use anyhow::{Result, anyhow};
 use backon::{BlockingRetryable as _, ConstantBuilder};
 use base64::{Engine, prelude::BASE64_STANDARD};
 use chrono::{Datelike, Months, NaiveDate, Utc, Weekday};
-use clap::{Arg, ArgAction, ArgMatches, command, error::ErrorKind, value_parser};
+use clap::{
+    Arg, ArgAction, ArgMatches, ValueEnum, builder::EnumValueParser, command, error::ErrorKind,
+    value_parser,
+};
 use comfy_table::{
     Attribute, Cell, CellAlignment, Color, ColumnConstraint, ContentArrangement, Table,
     modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL,
@@ -81,6 +84,13 @@ struct Bonds {
     success: bool,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+enum SortBy {
+    MaturityDateAsc,
+    MaturityDateDesc,
+    NetReturn,
+}
+
 fn set_up_flags() -> ArgMatches {
     let mut cmd = command!()
     .arg_required_else_help(true)
@@ -100,6 +110,15 @@ fn set_up_flags() -> ArgMatches {
         .short('s')
         .action(ArgAction::SetTrue)
         .help("Shows all rows in the table for completeness, even gilts which would return less money overall.")
+    )
+    .arg(
+        Arg::new("order-by")
+        .long("order-by")
+        .short('o')
+        .action(ArgAction::Set)
+        .value_parser(EnumValueParser::<SortBy>::new())
+        .default_value("net-return")
+        .help("Chooses the final sort order for the table.")
     )
     ;
     let matches = cmd.get_matches_mut();
@@ -295,7 +314,8 @@ fn calculate_gilt_returns(bonds: Vec<Bond>, income_tax_rate: Decimal) -> Vec<Tab
         let coupon_rate = bond.coupon_percent * Decimal::new(1, 2); // e.g. 2 -> 0.02
         let period_coupon = coupon_rate * Decimal::new(5, 1); // Each 6-monthly period, only half the coupon is paid.
         // Note: This may end up negative, this is INTENTIONAL!
-        let accrued_interest = ((days_through_period / days_in_period) + ex_dividend_period_count_adjustment)
+        let accrued_interest = ((days_through_period / days_in_period)
+            + ex_dividend_period_count_adjustment)
             * period_coupon
             * bond.lot_size;
         let total_interest = period_coupon * num_periods * bond.lot_size;
@@ -333,7 +353,6 @@ fn calculate_gilt_returns(bonds: Vec<Bond>, income_tax_rate: Decimal) -> Vec<Tab
         });
     }
     filter_strictly_worse_rows(&mut table_rows);
-    table_rows.sort_by(|x, y| y.annualised_net.cmp(&x.annualised_net));
     table_rows
 }
 
@@ -453,7 +472,14 @@ fn main() {
 
     let income_tax_percent: Decimal = *flags.get_one("income-tax-percent").unwrap(); // Safe because of value_parser.
     let income_tax_rate = income_tax_percent / Decimal::ONE_HUNDRED;
-    let table_rows = calculate_gilt_returns(bonds, income_tax_rate);
+    let mut table_rows = calculate_gilt_returns(bonds, income_tax_rate);
+
+    let table_sort_order: SortBy = *flags.get_one("order-by").unwrap();
+    match table_sort_order {
+        SortBy::MaturityDateAsc => table_rows.sort_by(|x, y| x.maturity.cmp(&y.maturity)),
+        SortBy::MaturityDateDesc => table_rows.sort_by(|x, y| y.maturity.cmp(&x.maturity)),
+        SortBy::NetReturn => table_rows.sort_by(|x, y| y.annualised_net.cmp(&x.annualised_net)),
+    }
 
     let mut data_table = generate_table_headers(flags.get_flag("show-hidden-rows"));
     insert_table_entries(
