@@ -88,14 +88,10 @@ jobs:
         name: Publish Attestation (non-Windows)
         uses: actions/attest-build-provenance@db473fddc028af60658334401dc6fa3ffd8669fd # v2.3.0
         with:
-          subject-path: |
-            target/${{ matrix.platform.target }}/release/gilt
-            ${{ matrix.platform.target }}.tar.gz
+          subject-path: ./target/${{ matrix.platform.target }}/release/gilt, ./${{ matrix.platform.target }}.tar.gz
       
       - if: ${{ startsWith(matrix.platform.runs-on, 'windows-') }}
         name: Publish Attestation (Windows)
         uses: actions/attest-build-provenance@db473fddc028af60658334401dc6fa3ffd8669fd # v2.3.0
         with:
-          subject-path: |
-            target\${{ matrix.platform.target }}\release\gilt.exe
-            ${{ matrix.platform.target }}.zip
+          subject-path: .\\target\${{ matrix.platform.target }}\release\gilt.exe .\\${{ matrix.platform.target }}.zip
