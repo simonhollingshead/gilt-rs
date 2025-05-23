@@ -72,7 +72,8 @@ jobs:
         with:
           tool: cargo-sbom
 
-      - name: Prepare Rust Cache
+      - if: ${{ ! startsWith(github.ref, 'refs/tags/') }}
+        name: Enable Rust Cache
         uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
