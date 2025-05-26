@@ -10,6 +10,8 @@ on:
       - main
     tags:
       - "*"
+  schedule:
+    - cron: '57 1 * * 6'
 
 permissions:
   id-token: write
