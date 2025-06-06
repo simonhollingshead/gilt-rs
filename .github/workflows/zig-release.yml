@@ -37,7 +37,7 @@ jobs:
         run: rustup toolchain install stable --profile minimal
     
       - name: Install Cross-Compilation Target
-        run: rustup target add ${{ matrix.platform.zigbuild-target }}
+        run: rustup target add ${{ matrix.platform.rustup-target }}
 
       - if: ${{ ! startsWith(github.ref, 'refs/tags/') }}
         name: Enable Rust Cache
