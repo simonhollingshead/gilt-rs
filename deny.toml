@@ -25,8 +25,8 @@ multiple-versions = "allow"
 wildcards = "deny"
 highlight = "all"
 deny = [
-    { crate = "openssl", use-instead = "rustls", reason = "breaks cross" },
-    { crate = "openssl-sys", use-instead = "rustls", reason = "breaks cross" },
+    { crate = "openssl", use-instead = "rustls" },
+    { crate = "openssl-sys", use-instead = "rustls" },
 ]
 
 [sources]
