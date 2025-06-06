@@ -17,18 +17,21 @@ jobs:
             archive-name: gilt-linux-x86_64
             rustup-target: x86_64-unknown-linux-gnu
             zigbuild-target: x86_64-unknown-linux-gnu.2.17
+            zigbuild-overrides: 
 
           - readable-target-name: Linux ARM
             runs-on: ubuntu-latest
             archive-name: gilt-linux-aarch64
             rustup-target: aarch64-unknown-linux-gnu
             zigbuild-target: aarch64-unknown-linux-gnu.2.17
+            zigbuild-overrides: 
 
           - readable-target-name: macOS Universal Binary
             runs-on: macOS-latest
             archive-name: gilt-macos-ub
             rustup-target: x86_64-apple-darwin aarch64-apple-darwin
             zigbuild-target: universal2-apple-darwin
+            zigbuild-overrides: SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
 
 
     runs-on: ${{ matrix.platform.runs-on }}
@@ -62,7 +65,7 @@ jobs:
         run: brew install zig
 
       - name: Zigbuild
-        run: cargo zigbuild --locked --release --target ${{ matrix.platform.zigbuild-target }}
+        run: ${{ matrix.platform.zigbuild-overrides }} cargo zigbuild --locked --release --target ${{ matrix.platform.zigbuild-target }}
 
       - name: Produce SBOM
         run: cargo sbom --output-format=spdx_json_2_3 > sbom-spdx.json
