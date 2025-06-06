@@ -1,4 +1,4 @@
-name: Release Binary using Zig (Testing)
+name: Release Binary using Zig/Xwin (Testing)
 
 on:
   workflow_dispatch:
@@ -16,28 +16,32 @@ jobs:
             runs-on: ubuntu-latest
             archive-name: gilt-linux-x86_64
             rustup-target: x86_64-unknown-linux-gnu
-            zigbuild-target: x86_64-unknown-linux-gnu.2.17
+            build-tool: zigbuild
+            build-tool-target: x86_64-unknown-linux-gnu.2.17
             build-dst-dir: x86_64-unknown-linux-gnu
 
           - readable-target-name: Linux ARM
             runs-on: ubuntu-latest
             archive-name: gilt-linux-aarch64
             rustup-target: aarch64-unknown-linux-gnu
-            zigbuild-target: aarch64-unknown-linux-gnu.2.17
+            build-tool: zigbuild
+            build-tool-target: aarch64-unknown-linux-gnu.2.17
             build-dst-dir: aarch64-unknown-linux-gnu
 
           - readable-target-name: Windows x86_64
             runs-on: ubuntu-latest
             archive-name: gilt-windows-x86_64
             rustup-target: x86_64-pc-windows-gnu
-            zigbuild-target: x86_64-pc-windows-gnu
+            build-tool: xwin
+            build-tool-target: x86_64-pc-windows-gnu
             build-dst-dir: x86_64-pc-windows-gnu
 
           - readable-target-name: macOS Universal Binary
             runs-on: macOS-latest
             archive-name: gilt-macos-ub
             rustup-target: x86_64-apple-darwin aarch64-apple-darwin
-            zigbuild-target: universal2-apple-darwin
+            build-tool: zigbuild
+            build-tool-target: universal2-apple-darwin
             build-dst-dir: universal2-apple-darwin
 
 
@@ -59,16 +63,16 @@ jobs:
           key: ${{ matrix.platform.zigbuild-target }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      - name: Install cargo-sbom and cargo-zigbuild
+      - name: Install packages
         uses: taiki-e/install-action@735e5933943122c5ac182670a935f54a949265c1 # v2.52.4
         with:
-          tool: cargo-sbom, cargo-zigbuild
+          tool: cargo-sbom, cargo-${{matrix.platform.build-tool}}
 
-      - if: ${{ startsWith(matrix.platform.runs-on, 'ubuntu-') }}
+      - if: ${{ startsWith(matrix.platform.runs-on, 'ubuntu-') && matrix.platform.build-tool == 'zigbuild' }}
         name: Install Zig (Linux)
         run: sudo snap install zig --beta --classic
     
-      - if: ${{ startsWith(matrix.platform.runs-on, 'macOS-') }}
+      - if: ${{ startsWith(matrix.platform.runs-on, 'macOS-') && matrix.platform.build-tool == 'zigbuild' }}
         name: Install old Zig (macOS) (https://github.com/rust-cross/cargo-zigbuild/issues/324)
         run: |
           wget "https://github.com/Homebrew/homebrew-core/raw/c54c3a4ec99029097088d72533dd1b2f75a7ac3c/Formula/z/zig.rb"
@@ -80,8 +84,8 @@ jobs:
           sudo xcode-select -s /Library/Developer/CommandLineTools
           echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "${GITHUB_ENV}"
 
-      - name: Zigbuild
-        run: cargo zigbuild --locked --release --target ${{ matrix.platform.zigbuild-target }}
+      - name: Build
+        run: cargo ${{ matrix.platform.build-tool }} --locked --release --target ${{ matrix.platform.build-tool-target }}
 
       - name: Produce SBOM
         run: cargo sbom --output-format=spdx_json_2_3 > sbom-spdx.json
