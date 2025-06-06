@@ -53,8 +53,13 @@ jobs:
         with:
           tool: cargo-sbom, cargo-zigbuild
 
-      - name: Install Zig
+      - if: ${{ startsWith(matrix.platform.runs-on, 'ubuntu-') }}
+        name: Install Zig (Linux)
         run: sudo snap install zig --beta --classic
+    
+      - if: ${{ startsWith(matrix.platform.runs-on, 'macOS-') }}
+        name: Install Zig (macOS)
+        run: brew install zig
 
       - name: Zigbuild
         run: cargo zigbuild --locked --release --target ${{ matrix.platform.zigbuild-target }}
