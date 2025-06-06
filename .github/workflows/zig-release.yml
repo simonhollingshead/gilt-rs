@@ -71,8 +71,10 @@ jobs:
           echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "${GITHUB_ENV}"
 
       - if: ${{ startsWith(matrix.platform.runs-on, 'macOS-') }}
-        name: Run Upterm
-        uses: lhotari/action-upterm@v1
+        name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
 
       - name: Zigbuild
         run: cargo zigbuild --locked --release --target ${{ matrix.platform.zigbuild-target }}
