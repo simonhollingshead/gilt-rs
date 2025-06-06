@@ -73,8 +73,6 @@ jobs:
       - if: ${{ startsWith(matrix.platform.runs-on, 'macOS-') }}
         name: Run Upterm
         uses: lhotari/action-upterm@v1
-        with:
-          limit-access-to-actor: true
 
       - name: Zigbuild
         run: cargo zigbuild --locked --release --target ${{ matrix.platform.zigbuild-target }}
