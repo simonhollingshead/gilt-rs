@@ -31,10 +31,10 @@ jobs:
           - readable-target-name: Windows x86_64
             runs-on: ubuntu-latest
             archive-name: gilt-windows-x86_64
-            rustup-target: x86_64-pc-windows-gnu
+            rustup-target: x86_64-pc-windows-msvc
             build-tool: xwin
-            build-tool-target: x86_64-pc-windows-gnu
-            build-dst-dir: x86_64-pc-windows-gnu
+            build-tool-target: x86_64-pc-windows-msvc
+            build-dst-dir: x86_64-pc-windows-msvc
 
           - readable-target-name: macOS Universal Binary
             runs-on: macOS-latest
