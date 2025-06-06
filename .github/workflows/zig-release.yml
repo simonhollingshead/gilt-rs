@@ -29,10 +29,10 @@ jobs:
             build-dst-dir: aarch64-unknown-linux-gnu
 
           - readable-target-name: Windows x86_64
-            runs-on: ubuntu-latest
+            runs-on: windows-latest
             archive-name: gilt-windows-x86_64
             rustup-target: x86_64-pc-windows-msvc
-            build-tool: xwin
+            build-tool: cargo
             build-tool-target: x86_64-pc-windows-msvc
             build-dst-dir: x86_64-pc-windows-msvc
 
@@ -60,13 +60,19 @@ jobs:
         name: Enable Rust Cache
         uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
         with:
-          key: ${{ matrix.platform.zigbuild-target }}
+          key: ${{ matrix.platform.build-tool-target }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      - name: Install packages
+      - name: Install cargo-sbom
         uses: taiki-e/install-action@735e5933943122c5ac182670a935f54a949265c1 # v2.52.4
         with:
-          tool: cargo-sbom, cargo-${{matrix.platform.build-tool}}
+          tool: cargo-sbom
+
+      - if: ${{ matrix.platform.build-tool == 'zigbuild' }}
+        name: Install cargo-zigbuild
+        uses: taiki-e/install-action@735e5933943122c5ac182670a935f54a949265c1 # v2.52.4
+        with:
+          tool: cargo-zigbuild
 
       - if: ${{ startsWith(matrix.platform.runs-on, 'ubuntu-') && matrix.platform.build-tool == 'zigbuild' }}
         name: Install Zig (Linux)
@@ -88,9 +94,9 @@ jobs:
         name: Build (Zig)
         run: cargo zigbuild --locked --release --target ${{ matrix.platform.build-tool-target }}
 
-      - if: ${{ matrix.platform.build-tool == 'xwin' }}
-        name: Build (Xwin)
-        run: cargo xwin build --locked --release --target ${{ matrix.platform.build-tool-target }}
+      - if: ${{ matrix.platform.build-tool == 'cargo' }}
+        name: Build (Cargo)
+        run: cargo build --locked --release --target ${{ matrix.platform.build-tool-target }}
 
       - name: Produce SBOM
         run: cargo sbom --output-format=spdx_json_2_3 > sbom-spdx.json
