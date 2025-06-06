@@ -26,6 +26,13 @@ jobs:
             zigbuild-target: aarch64-unknown-linux-gnu.2.17
             build-dst-dir: aarch64-unknown-linux-gnu
 
+          - readable-target-name: Windows x86_64
+            runs-on: ubuntu-latest
+            archive-name: gilt-windows-x86_64
+            rustup-target: x86_64-pc-windows-gnu
+            zigbuild-target: x86_64-pc-windows-gnu
+            build-dst-dir: x86_64-pc-windows-gnu
+
           - readable-target-name: macOS Universal Binary
             runs-on: macOS-latest
             archive-name: gilt-macos-ub
