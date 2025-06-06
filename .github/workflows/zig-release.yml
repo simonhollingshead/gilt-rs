@@ -84,8 +84,13 @@ jobs:
           sudo xcode-select -s /Library/Developer/CommandLineTools
           echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "${GITHUB_ENV}"
 
-      - name: Build
-        run: cargo ${{ matrix.platform.build-tool }} --locked --release --target ${{ matrix.platform.build-tool-target }}
+      - if: ${{ matrix.platform.build-tool == 'zigbuild' }}
+        name: Build (Zig)
+        run: cargo zigbuild --locked --release --target ${{ matrix.platform.build-tool-target }}
+
+      - if: ${{ matrix.platform.build-tool == 'xwin' }}
+        name: Build (Xwin)
+        run: cargo xwin build --locked --release --target ${{ matrix.platform.build-tool-target }}
 
       - name: Produce SBOM
         run: cargo sbom --output-format=spdx_json_2_3 > sbom-spdx.json
