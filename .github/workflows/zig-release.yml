@@ -1,4 +1,4 @@
-name: Release Binary using Zig/Xwin (Testing)
+name: Release Binary (Testing)
 
 on:
   workflow_dispatch:
