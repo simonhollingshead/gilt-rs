@@ -59,22 +59,16 @@ jobs:
         run: sudo snap install zig --beta --classic
     
       - if: ${{ startsWith(matrix.platform.runs-on, 'macOS-') }}
-        name: Install Zig (macOS)
-        run: brew install zig
-
-      - if: ${{ startsWith(matrix.platform.runs-on, 'macOS-') }}
-        name: Add macOS SDK Environment Variable
+        name: Install old Zig (macOS) (https://github.com/rust-cross/cargo-zigbuild/issues/324)
         run: |
-          echo $(xcrun --sdk macosx --show-sdk-path)
-          sudo xcode-select -s /Library/Developer/CommandLineTools
-          echo $(xcrun --sdk macosx --show-sdk-path)
-          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "${GITHUB_ENV}"
+          wget "https://github.com/Homebrew/homebrew-core/raw/c54c3a4ec99029097088d72533dd1b2f75a7ac3c/Formula/z/zig.rb"
+          brew install zig.rb
 
       - if: ${{ startsWith(matrix.platform.runs-on, 'macOS-') }}
-        name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-        with:
-          limit-access-to-actor: true
+        name: Set macOS SDK Environment Variable
+        run: |
+          sudo xcode-select -s /Library/Developer/CommandLineTools
+          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "${GITHUB_ENV}"
 
       - name: Zigbuild
         run: cargo zigbuild --locked --release --target ${{ matrix.platform.zigbuild-target }}
