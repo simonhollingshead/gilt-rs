@@ -6,6 +6,11 @@ on:
 env:
   CARGO_INCREMENTAL: 0
 
+permissions:
+  id-token: write
+  attestations: write
+  contents: write
+
 jobs:
   release:
     name: Release - ${{ matrix.platform.readable-target-name }}
