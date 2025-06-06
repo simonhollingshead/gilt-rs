@@ -65,8 +65,10 @@ jobs:
       - if: ${{ startsWith(matrix.platform.runs-on, 'macOS-') }}
         name: Add macOS SDK Environment Variable
         run: |
+          echo $(xcrun --sdk macosx --show-sdk-path)
+          sudo xcode-select -s /Library/Developer/CommandLineTools
+          echo $(xcrun --sdk macosx --show-sdk-path)
           echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "${GITHUB_ENV}"
-          echo $SDKROOT
 
       - name: Zigbuild
         run: cargo zigbuild --locked --release --target ${{ matrix.platform.zigbuild-target }}
