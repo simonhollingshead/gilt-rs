@@ -22,6 +22,11 @@ jobs:
             rustup-target: aarch64-unknown-linux-gnu
             zigbuild-target: aarch64-unknown-linux-gnu.2.17
 
+          - readable-target-name: macOS Universal Binary
+            archive-name: gilt-macos-ub
+            rustup-target: x86_64-apple-darwin aarch64-apple-darwin
+            zigbuild-target: universal2-apple-darwin
+
 
     runs-on: ubuntu-latest
     steps:
