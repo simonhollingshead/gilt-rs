@@ -38,6 +38,45 @@ mod dmy_hyphenated {
     }
 }
 
+mod maybe_blank_decimal {
+    use std::str::FromStr;
+
+    use rust_decimal::{Decimal, prelude::FromPrimitive};
+    use serde::{Deserialize as _, Deserializer, de};
+    use serde_json::Value;
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Decimal, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let v = Value::deserialize(deserializer)?;
+        match v {
+            Value::String(s) => {
+                if s.is_empty() {
+                    Ok(Decimal::ZERO)
+                } else {
+                    Decimal::from_str(s.as_str()).map_err(de::Error::custom)
+                }
+            }
+            Value::Number(n) => {
+                if n.is_i64() {
+                    Ok(n.as_i64().unwrap().into())
+                } else if n.is_f64() {
+                    Decimal::from_f64(n.as_f64().unwrap())
+                        .ok_or("Could not parse number")
+                        .map_err(de::Error::custom)
+                } else {
+                    Err(de::Error::custom("Could not parse number."))
+                }
+            }
+            Value::Null => Ok(Decimal::ZERO),
+            Value::Bool(_) => Err(de::Error::custom("Unexpected boolean.")),
+            Value::Array(_) => Err(de::Error::custom("Unexpected array.")),
+            Value::Object(_) => Err(de::Error::custom("Unexpected object.")),
+        }
+    }
+}
+
 #[derive(Deserialize)]
 struct Quote {
     // Use Formatted so that there's no weird JSON floating point taking place - direct from String to Decimal.
@@ -62,10 +101,12 @@ struct TableRow {
 
 #[derive(Deserialize)]
 struct Bond {
+    #[serde(with = "maybe_blank_decimal")]
     #[serde(rename(deserialize = "coupon"))]
     coupon_percent: Decimal, // e.g. 1.5 means 1.5% coupon.
     isin: String,
     #[serde(rename(deserialize = "lotSize"))]
+    #[serde(with = "maybe_blank_decimal")]
     lot_size: Decimal,
     #[serde(with = "dmy_hyphenated")]
     #[serde(rename(deserialize = "maturityDate"))]

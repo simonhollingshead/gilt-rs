@@ -548,6 +548,7 @@ dependencies = [
  "reqwest",
  "rust_decimal",
  "serde",
+ "serde_json",
  "ua_generator",
 ]
 
