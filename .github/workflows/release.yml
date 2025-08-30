@@ -140,7 +140,7 @@ jobs:
       
       - if: ${{ ! startsWith(matrix.platform.runs-on, 'windows-') && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') }}
         name: Publish SBOM Attestation (non-Windows)
-        uses: actions/attest-sbom@bd218ad0dbcb3e146bd073d1d9c6d78e08aa8a0b # v2.4.0
+        uses: actions/attest-sbom@4651f806c01d8637787e274ac3bdf724ef169f34 # v3.0.0
         with:
           subject-path: ./${{ matrix.platform.archive-name }}.tar.gz, ./target/${{ matrix.platform.build-dst-dir }}/release/gilt, ./sbom-spdx.json
           sbom-path: ./sbom-spdx.json
@@ -153,7 +153,7 @@ jobs:
 
       - if: ${{ startsWith(matrix.platform.runs-on, 'windows-') && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') }}
         name: Publish SBOM Attestation (Windows)
-        uses: actions/attest-sbom@bd218ad0dbcb3e146bd073d1d9c6d78e08aa8a0b # v2.4.0
+        uses: actions/attest-sbom@4651f806c01d8637787e274ac3bdf724ef169f34 # v3.0.0
         with:
           subject-path: .\${{ matrix.platform.archive-name }}.zip, .\target\${{ matrix.platform.build-dst-dir }}\release\gilt.exe, .\sbom-spdx.json
           sbom-path: .\sbom-spdx.json
