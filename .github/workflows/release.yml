@@ -104,7 +104,7 @@ jobs:
       - if: ${{ startsWith(matrix.platform.runs-on, 'macOS-') && matrix.platform.build-tool == 'zigbuild' }}
         name: Install old Zig (macOS) (https://github.com/rust-cross/cargo-zigbuild/issues/324)
         run: |
-          brew update --preinstall
+          brew update
           brew tap-new $USER/local-tap
           brew extract --version=0.11.0 zig $USER/local-tap
           brew install zig@0.11.0
