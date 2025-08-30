@@ -104,8 +104,10 @@ jobs:
       - if: ${{ startsWith(matrix.platform.runs-on, 'macOS-') && matrix.platform.build-tool == 'zigbuild' }}
         name: Install old Zig (macOS) (https://github.com/rust-cross/cargo-zigbuild/issues/324)
         run: |
-          wget "https://github.com/Homebrew/homebrew-core/raw/c54c3a4ec99029097088d72533dd1b2f75a7ac3c/Formula/z/zig.rb"
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=TRUE brew install --formula zig.rb
+          brew update --preinstall
+          brew tap-new $USER/local-tap
+          brew extract --version=0.11.0 zig $USER/local-tap
+          brew install zig@0.11.0
 
       - if: ${{ startsWith(matrix.platform.runs-on, 'macOS-') }}
         name: Set macOS SDK Environment Variable
