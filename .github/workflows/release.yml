@@ -105,9 +105,10 @@ jobs:
         name: Install old Zig (macOS) (https://github.com/rust-cross/cargo-zigbuild/issues/324)
         run: |
           brew update
+          brew uninstall cmake
           brew tap-new $USER/local-tap
           brew extract --version=0.11.0 zig $USER/local-tap
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=TRUE brew install zig@0.11.0
+          brew install zig@0.11.0
 
       - if: ${{ startsWith(matrix.platform.runs-on, 'macOS-') }}
         name: Set macOS SDK Environment Variable
