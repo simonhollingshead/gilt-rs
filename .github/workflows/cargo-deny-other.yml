@@ -1,0 +1,31 @@
+name: Check for Cargo Deny issues
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '**/Cargo.lock'
+      - '**/Cargo.toml'
+      - '**/deny.toml'
+  push:
+    paths:
+      - '**/Cargo.lock'
+      - '**/Cargo.toml'
+      - '**/deny.toml'
+    branches:
+      - main
+  schedule:
+    - cron: '57 1 * * *'
+
+jobs:
+  cargo-deny:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Run cargo deny
+        uses: EmbarkStudios/cargo-deny-action@f2ba7abc2abebaf185c833c3961145a3c275caad # v2.0.13
+        with:
+            command: check bans licenses sources
