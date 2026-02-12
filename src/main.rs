@@ -161,6 +161,14 @@ fn set_up_flags() -> ArgMatches {
         .default_value("net-return")
         .help("Chooses the final sort order for the table.")
     )
+    .arg(
+        Arg::new("max-remaining")
+        .long("max-remaining")
+        .action(ArgAction::Set)
+        .value_parser(value_parser!(i32))
+        .default_value("1000")
+        .help("Max years until maturity")
+        )
     ;
     let matches = cmd.get_matches_mut();
 
@@ -513,7 +521,13 @@ fn main() {
 
     let income_tax_percent: Decimal = *flags.get_one("income-tax-percent").unwrap(); // Safe because of value_parser.
     let income_tax_rate = income_tax_percent / Decimal::ONE_HUNDRED;
-    let mut table_rows = calculate_gilt_returns(bonds, income_tax_rate);
+    let mut table_rows: Vec<_> = calculate_gilt_returns(bonds, income_tax_rate)
+        .into_iter()
+        .filter(|x| {
+            x.maturity.year() - chrono::Local::now().date_naive().year()
+                < *flags.get_one("max-remaining").unwrap()
+        })
+        .collect();
 
     let table_sort_order: SortBy = *flags.get_one("order-by").unwrap();
     match table_sort_order {
