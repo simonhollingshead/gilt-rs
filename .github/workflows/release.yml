@@ -87,13 +87,13 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Install cargo-sbom
-        uses: taiki-e/install-action@71b48393496777ee11188c07a34d48b048a985cd # v2.68.5
+        uses: taiki-e/install-action@68675c5a5f1a6950c3975d33f3ae0ef155e5bf3d # v2.68.15
         with:
           tool: cargo-sbom
 
       - if: ${{ matrix.platform.build-tool == 'zigbuild' }}
         name: Install cargo-zigbuild
-        uses: taiki-e/install-action@71b48393496777ee11188c07a34d48b048a985cd # v2.68.5
+        uses: taiki-e/install-action@68675c5a5f1a6950c3975d33f3ae0ef155e5bf3d # v2.68.15
         with:
           tool: cargo-zigbuild
 
