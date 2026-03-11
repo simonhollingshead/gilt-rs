@@ -17,6 +17,9 @@ on:
   schedule:
     - cron: '57 1 * * *'
 
+permissions:
+  contents: read
+
 jobs:
   advisories:
     runs-on: ubuntu-latest
