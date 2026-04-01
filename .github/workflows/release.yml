@@ -128,7 +128,7 @@ jobs:
         run: cargo sbom --output-format=spdx_json_2_3 > sbom-spdx.json
 
       - name: Publish artifacts and release
-        uses: houseabsolute/actions-rust-release@48ce35fb40c3dab00791a3d6c485022341354c44 # v0.0.6
+        uses: houseabsolute/actions-rust-release@c44c1813a888b1d070680a3783d0ed0d8cc2b6b6 # v0.0.7
         with:
           executable-name: gilt
           target: ${{ matrix.platform.build-dst-dir }}
