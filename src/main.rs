@@ -4,10 +4,7 @@ use anyhow::{Result, anyhow};
 use backon::{BlockingRetryable as _, ConstantBuilder};
 use base64::{Engine, prelude::BASE64_STANDARD};
 use chrono::{Datelike, Months, NaiveDate, Utc, Weekday};
-use clap::{
-    Arg, ArgAction, ArgMatches, ValueEnum, builder::EnumValueParser, command, error::ErrorKind,
-    value_parser,
-};
+use clap::{Parser, ValueEnum};
 use comfy_table::{
     Attribute, Cell, CellAlignment, Color, ColumnConstraint, ContentArrangement, Table,
     modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL,
@@ -132,62 +129,19 @@ enum SortBy {
     NetReturn,
 }
 
-fn set_up_flags() -> ArgMatches {
-    let mut cmd = command!()
-    .arg_required_else_help(true)
-    .arg(
-        Arg::new("income-tax-percent")
-            .short('t')
-            .long("income-tax-percent")
-            .action(ArgAction::Set)
-            .value_name("PERCENTAGE_RATE")
-            .value_parser(value_parser!(Decimal))
-            .required(true)
-            .help("The marginal rate of tax paid by the individual on arising income.  For example, '20' for 20% tax."),
-    )
-    .arg(
-        Arg::new("show-hidden-rows")
-        .long("show-hidden-rows")
-        .short('s')
-        .action(ArgAction::SetTrue)
-        .help("Shows all rows in the table for completeness, even gilts which would return less money overall.")
-    )
-    .arg(
-        Arg::new("order-by")
-        .long("order-by")
-        .short('o')
-        .action(ArgAction::Set)
-        .value_parser(EnumValueParser::<SortBy>::new())
-        .default_value("net-return")
-        .help("Chooses the final sort order for the table.")
-    )
-    ;
-    let matches = cmd.get_matches_mut();
+#[derive(clap::Parser)]
+struct Opt {
+    /// The marginal rate of tax paid by the individual on arising income.  For example, '20' for 20% tax.
+    #[arg(long, short = 't')]
+    income_tax_percent: Decimal,
 
-    let income_tax_percent: Decimal = *matches.get_one("income-tax-percent").unwrap();
-    if income_tax_percent < Decimal::ZERO {
-        cmd.error(
-            ErrorKind::ValueValidation,
-            "Your marginal tax rate must be 0% or higher.  Set --income-tax-percent to a number greater than 0."
-        ).exit()
-    }
-    if income_tax_percent >= Decimal::ONE_HUNDRED {
-        cmd.error(
-            ErrorKind::ValueValidation,
-            "Your marginal tax rate must be lower than 100%.  Set --income-tax-percent to a number less than 100."
-        ).exit()
-    }
-    if income_tax_percent > Decimal::ZERO && income_tax_percent < Decimal::ONE {
-        println!(
-            "WARNING: You may have entered the wrong income tax percentage.  You indicated a tax rate of {income_tax_percent}%."
-        );
-        println!(
-            "WARNING: If you meant to enter {}%, then set --income-tax-percent={} instead.",
-            (income_tax_percent * Decimal::ONE_HUNDRED).normalize(),
-            (income_tax_percent * Decimal::ONE_HUNDRED).normalize()
-        );
-    }
-    matches
+    /// Shows all rows in the table for completeness, even gilts which would return less money overall.
+    #[arg(long, short)]
+    show_hidden_rows: bool,
+
+    /// Chooses the final sort order for the table.
+    #[arg(long, short, default_value = "net-return")]
+    order_by: SortBy,
 }
 
 fn get_bond_list_retriable() -> Result<Bonds> {
@@ -507,27 +461,39 @@ fn insert_table_entries(data_table: &mut Table, rows: Vec<TableRow>, show_hidden
     }
 }
 
-fn main() {
-    let flags = set_up_flags(); // Important to do first, because we want to fail early if the flags are not set properly.
+fn main() -> Result<()> {
+    let opt = Opt::parse();
+
+    if opt.income_tax_percent < Decimal::ZERO {
+        return Err(anyhow!(
+            "Your marginal tax rate must be 0% or higher.  Set --income-tax-percent to a number greater than 0."
+        ));
+    }
+    if opt.income_tax_percent >= Decimal::ONE_HUNDRED {
+        return Err(anyhow!(
+            "Your marginal tax rate must be lower than 100%.  Set --income-tax-percent to a number less than 100."
+        ));
+    }
+    if opt.income_tax_percent < Decimal::ONE {
+        return Err(anyhow!(
+            "WARNING: You may have entered the wrong income tax percentage. You indicated a tax rate of {}%.",
+            opt.income_tax_percent
+        ));
+    }
+
     let bonds = get_bond_list();
 
-    let income_tax_percent: Decimal = *flags.get_one("income-tax-percent").unwrap(); // Safe because of value_parser.
-    let income_tax_rate = income_tax_percent / Decimal::ONE_HUNDRED;
-    let mut table_rows = calculate_gilt_returns(bonds, income_tax_rate);
+    let mut table_rows =
+        calculate_gilt_returns(bonds, opt.income_tax_percent / Decimal::ONE_HUNDRED);
 
-    let table_sort_order: SortBy = *flags.get_one("order-by").unwrap();
-    match table_sort_order {
+    match opt.order_by {
         SortBy::MaturityDateAsc => table_rows.sort_by(|x, y| x.maturity.cmp(&y.maturity)),
         SortBy::MaturityDateDesc => table_rows.sort_by(|x, y| y.maturity.cmp(&x.maturity)),
         SortBy::NetReturn => table_rows.sort_by(|x, y| y.annualised_net.cmp(&x.annualised_net)),
     }
 
-    let mut data_table = generate_table_headers(flags.get_flag("show-hidden-rows"));
-    insert_table_entries(
-        &mut data_table,
-        table_rows,
-        flags.get_flag("show-hidden-rows"),
-    );
+    let mut data_table = generate_table_headers(opt.show_hidden_rows);
+    insert_table_entries(&mut data_table, table_rows, opt.show_hidden_rows);
 
     printdoc! {"
         
@@ -539,4 +505,5 @@ fn main() {
     
     "}
     println!("{data_table}");
+    Ok(())
 }
