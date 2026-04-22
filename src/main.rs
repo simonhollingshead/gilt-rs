@@ -242,7 +242,7 @@ fn get_bond_list() -> Vec<Bond> {
 fn filter_strictly_worse_rows(rows: &mut Vec<TableRow>) {
     // This ONLY removes bonds that illogically take more time to return strictly less.
     // Get the one that returns more, then hold it at 0% in a bank for the remaining time.
-    rows.sort_by(|x, y| x.maturity.cmp(&y.maturity));
+    rows.sort_by_key(|x| x.maturity);
     let mut best_so_far = None;
     for row in rows {
         if best_so_far
@@ -517,9 +517,9 @@ fn main() {
 
     let table_sort_order: SortBy = *flags.get_one("order-by").unwrap();
     match table_sort_order {
-        SortBy::MaturityDateAsc => table_rows.sort_by(|x, y| x.maturity.cmp(&y.maturity)),
-        SortBy::MaturityDateDesc => table_rows.sort_by(|x, y| y.maturity.cmp(&x.maturity)),
-        SortBy::NetReturn => table_rows.sort_by(|x, y| y.annualised_net.cmp(&x.annualised_net)),
+        SortBy::MaturityDateAsc => table_rows.sort_by_key(|x| x.maturity),
+        SortBy::MaturityDateDesc => table_rows.sort_by_key(|x| std::cmp::Reverse(x.maturity)),
+        SortBy::NetReturn => table_rows.sort_by_key(|x| std::cmp::Reverse(x.annualised_net)),
     }
 
     let mut data_table = generate_table_headers(flags.get_flag("show-hidden-rows"));
