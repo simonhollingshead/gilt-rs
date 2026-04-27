@@ -38,7 +38,7 @@ mod dmy_hyphenated {
     }
 }
 
-mod maybe_blank_decimal {
+mod maybe_blank_maybe_thouseps_decimal {
     use std::str::FromStr;
 
     use rust_decimal::{Decimal, prelude::FromPrimitive};
@@ -55,7 +55,7 @@ mod maybe_blank_decimal {
                 if s.is_empty() {
                     Ok(Decimal::ZERO)
                 } else {
-                    Decimal::from_str(s.as_str()).map_err(de::Error::custom)
+                    Decimal::from_str(s.replace(',', "").as_str()).map_err(de::Error::custom)
                 }
             }
             Value::Number(n) => {
@@ -80,6 +80,7 @@ mod maybe_blank_decimal {
 #[derive(Deserialize)]
 struct Quote {
     // Use Formatted so that there's no weird JSON floating point taking place - direct from String to Decimal.
+    #[serde(with = "maybe_blank_maybe_thouseps_decimal")]
     #[serde(rename(deserialize = "priceFormatted"))]
     clean_price: Decimal, // Renaming specifically to be clear this is not the all-in price...
     #[serde(rename(deserialize = "currencyCode"))]
@@ -101,12 +102,12 @@ struct TableRow {
 
 #[derive(Deserialize)]
 struct Bond {
-    #[serde(with = "maybe_blank_decimal")]
+    #[serde(with = "maybe_blank_maybe_thouseps_decimal")]
     #[serde(rename(deserialize = "coupon"))]
     coupon_percent: Decimal, // e.g. 1.5 means 1.5% coupon.
     isin: String,
     #[serde(rename(deserialize = "lotSize"))]
-    #[serde(with = "maybe_blank_decimal")]
+    #[serde(with = "maybe_blank_maybe_thouseps_decimal")]
     lot_size: Decimal,
     #[serde(with = "dmy_hyphenated")]
     #[serde(rename(deserialize = "maturityDate"))]
