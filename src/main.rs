@@ -218,9 +218,9 @@ fn get_bond_list_retriable() -> Result<Bonds> {
             "fetch failed: API returned success={} data_exists={} data_elems={} message={:?} error_reference={:?}",
             parsed.success,
             parsed.data.is_some(),
-            parsed.data.unwrap_or(Vec::new()).len(),
-            parsed.message.unwrap_or(String::new()),
-            parsed.error_reference.unwrap_or(String::new())
+            parsed.data.as_ref().map_or(0, Vec::len),
+            parsed.message.as_deref().unwrap_or_default(),
+            parsed.error_reference.as_deref().unwrap_or_default()
         ))
     } else {
         Ok(parsed)
@@ -247,20 +247,19 @@ fn get_bond_list() -> Vec<Bond> {
         .unwrap() // Unwrap is safe - get_bond_list_retriable retries if data is none.
 }
 
-fn filter_strictly_worse_rows(rows: &mut Vec<TableRow>) {
+fn filter_strictly_worse_rows(rows: &mut [TableRow]) {
     // This ONLY removes bonds that illogically take more time to return strictly less.
     // Get the one that returns more, then hold it at 0% in a bank for the remaining time.
     rows.sort_by_key(|x| x.maturity);
-    let mut best_so_far = None;
+    let mut best_so_far: Option<(Decimal, String)> = None;
     for row in rows {
-        if best_so_far
-            .as_ref()
-            .is_some_and(|(x, _): &(Decimal, String)| x.gt(&row.total_net))
-        {
-            row.prefer_symbol = Some(best_so_far.as_ref().unwrap().1.clone());
-        } else {
-            best_so_far = Some((row.total_net, row.symbol.clone()));
+        if let Some((best_net, best_symbol)) = &best_so_far {
+            if best_net > &row.total_net {
+                row.prefer_symbol = Some(best_symbol.clone());
+                continue;
+            }
         }
+        best_so_far = Some((row.total_net, row.symbol.clone()));
     }
 }
 
@@ -298,7 +297,7 @@ fn calculate_gilt_returns(
             continue;
         }
 
-        if !bond.quote.currency_code.is_empty() && bond.quote.currency_code.to_lowercase() != "gbp"
+        if !bond.quote.currency_code.is_empty() && !bond.quote.currency_code.eq_ignore_ascii_case("gbp")
         {
             println!(
                 "Skipping bond {:?} ({}/{}), because its currency was {:?}.",
