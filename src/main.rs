@@ -162,6 +162,13 @@ fn set_up_flags() -> ArgMatches {
         .default_value("net-return")
         .help("Chooses the final sort order for the table.")
     )
+    .arg(
+        Arg::new("matures-no-later-than")
+        .long("matures-no-later-than")
+        .action(ArgAction::Set)
+        .value_parser(clap::value_parser!(NaiveDate))
+        .help("Filters out gilts which will mature after the given YYYY-MM-DD date.")
+    )
     ;
     let matches = cmd.get_matches_mut();
 
@@ -272,7 +279,10 @@ fn date_n_weekdays_before(date: NaiveDate, days: i8) -> NaiveDate {
     current_date
 }
 
-fn calculate_gilt_returns(bonds: Vec<Bond>, income_tax_rate: Decimal) -> Vec<TableRow> {
+fn calculate_gilt_returns(
+    bonds: impl Iterator<Item = Bond>,
+    income_tax_rate: Decimal,
+) -> Vec<TableRow> {
     // For simplicity, this calculation operates daily for midnight UTC each day, which isn't 'strictly' correct during DST.
     // In those circumstances, the data view between 0000 and 0100 AM BST may show the prior day's data - but markets won't
     // be open anyway, so the AJB quote information will already be many many hours stale.  Therefore it's not a concern.
@@ -280,8 +290,7 @@ fn calculate_gilt_returns(bonds: Vec<Bond>, income_tax_rate: Decimal) -> Vec<Tab
 
     let mut table_rows = Vec::new();
     for bond in bonds {
-        if bond.maturity_date <= today  // Already matured this morning (or earlier)
-            || !bond.isin.to_lowercase().starts_with("gb")  // Not a GB bond.
+        if !bond.isin.to_lowercase().starts_with("gb")  // Not a GB bond.
             || !bond.name.to_lowercase().contains("treasury")  // Not a gilt.
             || (bond.name.to_lowercase().contains("index")  // Index linked gilt returns can't be calculated.
                 && bond.name.to_lowercase().contains("linked"))
@@ -514,7 +523,18 @@ fn main() {
 
     let income_tax_percent: Decimal = *flags.get_one("income-tax-percent").unwrap(); // Safe because of value_parser.
     let income_tax_rate = income_tax_percent / Decimal::ONE_HUNDRED;
-    let mut table_rows = calculate_gilt_returns(bonds, income_tax_rate);
+    let mut table_rows = calculate_gilt_returns(
+        bonds
+            .into_iter()
+            .filter(|b| b.maturity_date > Utc::now().date_naive())
+            .filter(|b| {
+                b.maturity_date
+                    <= *flags
+                        .get_one("matures-no-later-than")
+                        .unwrap_or(&NaiveDate::MAX)
+            }),
+        income_tax_rate,
+    );
 
     let table_sort_order: SortBy = *flags.get_one("order-by").unwrap();
     match table_sort_order {
