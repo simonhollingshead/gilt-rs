@@ -139,8 +139,7 @@ fn parse_tax_rate(s: &str) -> Result<Decimal, String> {
     }
     if d < Decimal::ONE {
         let hundred_d = (d * Decimal::ONE_HUNDRED).normalize();
-        println!("WARNING: You may have entered an incorrect tax rate ({}%).  Did you mean {}%?  If so, set the flag value to {} instead of {}.",
-            d, hundred_d, hundred_d, s);
+        println!("WARNING: You may have entered an incorrect tax rate ({d}%).  Did you mean {hundred_d}%?  If so, set the flag value to {hundred_d} instead of {s}.");
     }
     Ok(d)
 }
