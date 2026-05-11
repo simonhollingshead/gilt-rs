@@ -4,16 +4,12 @@ use anyhow::{Result, anyhow};
 use backon::{BlockingRetryable as _, ConstantBuilder};
 use base64::{Engine, prelude::BASE64_STANDARD};
 use chrono::{Datelike, Months, NaiveDate, Utc, Weekday};
-use clap::{
-    Arg, ArgAction, ArgMatches, ValueEnum, builder::EnumValueParser, command, error::ErrorKind,
-    value_parser,
-};
+use clap::{Arg, ArgAction, ArgMatches, ValueEnum, builder::EnumValueParser, command};
 use comfy_table::{
     Attribute, Cell, CellAlignment, Color, ColumnConstraint, ContentArrangement, Table,
     modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL,
 };
 use core::time::Duration;
-use indoc::printdoc;
 use reqwest::{
     blocking::Client,
     header::{REFERER, USER_AGENT},
@@ -62,11 +58,11 @@ mod maybe_blank_maybe_thouseps_decimal {
                 if n.is_i64() {
                     Ok(n.as_i64().unwrap().into())
                 } else if n.is_f64() {
-                    Decimal::from_f64(n.as_f64().unwrap())
-                        .ok_or("Could not parse number")
-                        .map_err(de::Error::custom)
+                    Decimal::from_f64(n.as_f64().unwrap()).ok_or_else(|| {
+                        de::Error::custom(format!("Could not parse {} (f64)", n.as_f64().unwrap()))
+                    })
                 } else {
-                    Err(de::Error::custom("Could not parse number."))
+                    Err(de::Error::custom(format!("Could not parse {n} (unknown number type)")))
                 }
             }
             Value::Null => Ok(Decimal::ZERO),
@@ -133,8 +129,24 @@ enum SortBy {
     NetReturn,
 }
 
+fn parse_tax_rate(s: &str) -> Result<Decimal, String> {
+    let d: Decimal = s.parse().map_err(|e: rust_decimal::Error| e.to_string())?;
+    if d < Decimal::ZERO {
+        return Err("Income tax percentage must be 0% or higher".to_string());
+    }
+    if d >= Decimal::ONE_HUNDRED {
+        return Err("Income tax percentage must be lower than 100%".to_string());
+    }
+    if d < Decimal::ONE {
+        let hundred_d = (d * Decimal::ONE_HUNDRED).normalize();
+        println!("WARNING: You may have entered an incorrect tax rate ({}%).  Did you mean {}%?  If so, set the flag value to {} instead of {}.",
+            d, hundred_d, hundred_d, s);
+    }
+    Ok(d)
+}
+
 fn set_up_flags() -> ArgMatches {
-    let mut cmd = command!()
+    let cmd = command!()
     .arg_required_else_help(true)
     .arg(
         Arg::new("income-tax-percent")
@@ -142,7 +154,7 @@ fn set_up_flags() -> ArgMatches {
             .long("income-tax-percent")
             .action(ArgAction::Set)
             .value_name("PERCENTAGE_RATE")
-            .value_parser(value_parser!(Decimal))
+            .value_parser(parse_tax_rate)
             .required(true)
             .help("The marginal rate of tax paid by the individual on arising income.  For example, '20' for 20% tax."),
     )
@@ -170,32 +182,7 @@ fn set_up_flags() -> ArgMatches {
         .help("Filters out gilts which will mature after the given YYYY-MM-DD date.")
     )
     ;
-    let matches = cmd.get_matches_mut();
-
-    let income_tax_percent: Decimal = *matches.get_one("income-tax-percent").unwrap();
-    if income_tax_percent < Decimal::ZERO {
-        cmd.error(
-            ErrorKind::ValueValidation,
-            "Your marginal tax rate must be 0% or higher.  Set --income-tax-percent to a number greater than 0."
-        ).exit()
-    }
-    if income_tax_percent >= Decimal::ONE_HUNDRED {
-        cmd.error(
-            ErrorKind::ValueValidation,
-            "Your marginal tax rate must be lower than 100%.  Set --income-tax-percent to a number less than 100."
-        ).exit()
-    }
-    if income_tax_percent > Decimal::ZERO && income_tax_percent < Decimal::ONE {
-        println!(
-            "WARNING: You may have entered the wrong income tax percentage.  You indicated a tax rate of {income_tax_percent}%."
-        );
-        println!(
-            "WARNING: If you meant to enter {}%, then set --income-tax-percent={} instead.",
-            (income_tax_percent * Decimal::ONE_HUNDRED).normalize(),
-            (income_tax_percent * Decimal::ONE_HUNDRED).normalize()
-        );
-    }
-    matches
+    cmd.get_matches()
 }
 
 fn get_bond_list_retriable() -> Result<Bonds> {
@@ -253,11 +240,10 @@ fn filter_strictly_worse_rows(rows: &mut [TableRow]) {
     rows.sort_by_key(|x| x.maturity);
     let mut best_so_far: Option<(Decimal, String)> = None;
     for row in rows {
-        if let Some((best_net, best_symbol)) = &best_so_far {
-            if best_net > &row.total_net {
-                row.prefer_symbol = Some(best_symbol.clone());
-                continue;
-            }
+        if let Some((best_net, best_symbol)) = &best_so_far && best_net > &row.total_net {
+            row.prefer_symbol = Some(best_symbol.clone());
+            continue;
+            
         }
         best_so_far = Some((row.total_net, row.symbol.clone()));
     }
@@ -457,15 +443,14 @@ fn generate_table_headers(show_notes: bool) -> Table {
 fn insert_table_entries(data_table: &mut Table, rows: Vec<TableRow>, show_hidden_rows: bool) {
     let hidden_row_count = rows.iter().filter(|x| x.prefer_symbol.is_some()).count();
     if hidden_row_count > 0 {
-        println!(
-            "Note: {hidden_row_count} of the discovered gilts are strictly worse (they take more time to return less money).",
+        println!("Note: {hidden_row_count} {}",
+            match (hidden_row_count, show_hidden_rows) {
+                (1, true) => "fetched gilt is strictly worse (taking more time to return less money).",
+                (1, false) => "fetched gilt is strictly worse (taking more time to return less money) - you can show it with --show-hidden-rows.",
+                (_, true) => "fetched gilts are strictly worse (taking more time to return less money).",
+                (_, false) => "fetched gilts are strictly worse (taking more time to return less money) - you can show them with --show-hidden-rows.",
+            },
         );
-
-        if show_hidden_rows {
-            println!("Those rows will still be shown because of --show-hidden-rows.");
-        } else {
-            println!("Those rows have been hidden - show them with --show-hidden-rows.");
-        }
     }
 
     for row in rows {
@@ -549,14 +534,12 @@ fn main() {
         flags.get_flag("show-hidden-rows"),
     );
 
-    printdoc! {"
-        
-        =============================[IMPORTANT DISCLAIMER]=============================
-        This program is neither financial nor tax advice.  It probably contains errors.
-        It may no longer match current UK taxation legislation.  You MUST do your own
-        checks before making any trading decision.
-        ================================================================================
-    
-    "}
+    println!();
+    println!("=============================[IMPORTANT DISCLAIMER]=============================");
+    println!("This program is neither financial nor tax advice.  It probably contains errors.");
+    println!("It may no longer match current UK taxation legislation.  You MUST do your own");
+    println!("checks before making any trading decision.");
+    println!("================================================================================");
+    println!();
     println!("{data_table}");
 }
