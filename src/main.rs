@@ -94,6 +94,7 @@ struct TableRow {
     symbol: String,
     prefer_symbol: Option<String>,
     total_net: Decimal,
+    suspected_bad_data: bool,
 }
 
 #[derive(Deserialize)]
@@ -239,10 +240,12 @@ fn filter_strictly_worse_rows(rows: &mut [TableRow]) {
     rows.sort_by_key(|x| x.maturity);
     let mut best_so_far: Option<(Decimal, String)> = None;
     for row in rows {
+        if row.suspected_bad_data {
+            continue;
+        }
         if let Some((best_net, best_symbol)) = &best_so_far && best_net > &row.total_net {
             row.prefer_symbol = Some(best_symbol.clone());
             continue;
-            
         }
         best_so_far = Some((row.total_net, row.symbol.clone()));
     }
@@ -383,6 +386,7 @@ fn calculate_gilt_returns(
             dirty_price: dirty_price.round_dp_with_strategy(3, RoundingStrategy::AwayFromZero),
             annualised_net: annualised_net_return,
             annualised_gross: grossed_up_return,
+            suspected_bad_data: grossed_up_return >= Decimal::new(5, 1),  // >=50% return.
             total_net: net_return,
             prefer_symbol: None,
         });
@@ -456,8 +460,17 @@ fn insert_table_entries(data_table: &mut Table, rows: Vec<TableRow>, show_hidden
         let should_hide = row.prefer_symbol.is_some();
         let (colour, style) = if should_hide {
             (Color::Red, vec![Attribute::CrossedOut, Attribute::Dim])
+        } else if row.suspected_bad_data {
+            (Color::DarkYellow, vec![Attribute::CrossedOut, Attribute::Dim])
         } else {
             (Color::Reset, vec![Attribute::Reset])
+        };
+        let note = if let Some(x) = &row.prefer_symbol {
+            format!("Use {x}")
+        } else if row.suspected_bad_data {
+            "Susp. Bad".to_string()
+        } else {
+            String::new()
         };
         data_table.add_row_if(
             |_, _| show_hidden_rows || !should_hide,
@@ -491,10 +504,7 @@ fn insert_table_entries(data_table: &mut Table, rows: Vec<TableRow>, show_hidden
                 .add_attributes(style.clone())
                 .fg(colour),
                 // Don't colour or cross out this cell, it needs to be readable.
-                Cell::new(
-                    row.prefer_symbol
-                        .map_or_else(String::new, |x| format!("Use {x}")),
-                ),
+                Cell::new(note),
             ],
         );
     }
@@ -526,7 +536,8 @@ fn main() {
         SortBy::NetReturn => table_rows.sort_by_key(|x| std::cmp::Reverse(x.annualised_net)),
     }
 
-    let mut data_table = generate_table_headers(flags.get_flag("show-hidden-rows"));
+    let has_bad_data = table_rows.iter().any(|row| row.suspected_bad_data);
+    let mut data_table = generate_table_headers(has_bad_data | flags.get_flag("show-hidden-rows"));
     insert_table_entries(
         &mut data_table,
         table_rows,
