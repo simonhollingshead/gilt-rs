@@ -4,6 +4,8 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    cooldown:
+      default-days: 7
     assignees:
       - "simonhollingshead"
     allow:
@@ -16,5 +18,7 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    cooldown:
+      default-days: 7
     assignees:
       - "simonhollingshead"
