@@ -140,26 +140,26 @@ jobs:
       
       - if: ${{ ! startsWith(matrix.platform.runs-on, 'windows-') && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') }}
         name: Publish SBOM Attestation (non-Windows)
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
           subject-path: ./${{ matrix.platform.archive-name }}.tar.gz, ./target/${{ matrix.platform.build-dst-dir }}/release/gilt, ./sbom-spdx.json
           sbom-path: ./sbom-spdx.json
 
       - if: ${{ ! startsWith(matrix.platform.runs-on, 'windows-') && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') }}
         name: Publish Artifact Attestation (non-Windows)
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
           subject-path: ./${{ matrix.platform.archive-name }}.tar.gz, ./target/${{ matrix.platform.build-dst-dir }}/release/gilt, ./sbom-spdx.json
 
       - if: ${{ startsWith(matrix.platform.runs-on, 'windows-') && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') }}
         name: Publish SBOM Attestation (Windows)
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
           subject-path: .\${{ matrix.platform.archive-name }}.zip, .\target\${{ matrix.platform.build-dst-dir }}\release\gilt.exe, .\sbom-spdx.json
           sbom-path: .\sbom-spdx.json
 
       - if: ${{ startsWith(matrix.platform.runs-on, 'windows-') && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') }}
         name: Publish Artifact Attestation (Windows)
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
           subject-path: .\${{ matrix.platform.archive-name }}.zip, .\target\${{ matrix.platform.build-dst-dir }}\release\gilt.exe, .\sbom-spdx.json
