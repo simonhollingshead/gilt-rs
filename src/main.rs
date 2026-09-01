@@ -6,8 +6,8 @@ use base64::{Engine, prelude::BASE64_STANDARD};
 use chrono::{Datelike, Months, NaiveDate, Utc, Weekday};
 use clap::{Arg, ArgAction, ArgMatches, ValueEnum, builder::EnumValueParser, command};
 use comfy_table::{
-    Attribute, Cell, CellAlignment, Color, ColumnConstraint, ContentArrangement, Table,
-    modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL,
+    Attribute, Cell, CellAlignment, Color, ColumnConstraint, ContentArrangement,
+    Table, presets::UTF8_FULL,
 };
 use core::time::Duration;
 use reqwest::{
@@ -398,8 +398,7 @@ fn calculate_gilt_returns(
 fn generate_table_headers(show_notes: bool) -> Table {
     let mut data_table = Table::new();
     data_table
-        .load_preset(UTF8_FULL)
-        .apply_modifier(UTF8_ROUND_CORNERS)
+        .load_style(UTF8_FULL.with_rounded_corners())
         .set_content_arrangement(ContentArrangement::Dynamic)
         .set_header(vec![
             Cell::new("\nISIN"),
