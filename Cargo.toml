@@ -17,7 +17,7 @@ backon = "1"
 base64 = "0.23"
 chrono = "0.4"
 clap = { version = "4", features = ["cargo", "derive"] }
-comfy-table = "7"
+comfy-table = "8"
 reqwest = { version = "0.13", default-features = false, features = ["blocking", "default-tls", "json", "charset", "http2"] }
 rust_decimal = { version = "1", features = ["maths"] }
 serde = { version = "1", features = ["derive"] }
