@@ -614,7 +614,7 @@ dependencies = [
 
 [[package]]
 name = "gilt"
-version = "0.3.6"
+version = "0.3.7"
 dependencies = [
  "anyhow",
  "backon",
