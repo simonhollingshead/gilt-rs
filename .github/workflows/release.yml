@@ -14,16 +14,18 @@ on:
     - cron: '57 1 * * 6'
 
 permissions:
-  id-token: write
-  attestations: write
-  contents: write
+  contents: read
 
 env:
   CARGO_INCREMENTAL: 0
 
 jobs:
-  release:
-    name: Release - ${{ matrix.platform.readable-target-name }}
+  package:
+    name: Package - ${{ matrix.platform.readable-target-name }}
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
     strategy:
       matrix:
         platform:
@@ -127,8 +129,8 @@ jobs:
       - name: Produce SBOM
         run: cargo sbom --output-format=spdx_json_2_3 > sbom-spdx.json
 
-      - name: Publish artifacts and release
-        uses: houseabsolute/actions-rust-release@d4224577aca6ac71a9d6aab18adf766c5656594c # v0.0.8
+      - name: Package artifacts
+        uses: houseabsolute/actions-rust-release@9e126fd5fc18f4cecf358b3909f3991ad59663dc # v1.0.1
         with:
           executable-name: gilt
           target: ${{ matrix.platform.build-dst-dir }}
@@ -163,3 +165,17 @@ jobs:
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: .\${{ matrix.platform.archive-name }}.zip, .\target\${{ matrix.platform.build-dst-dir }}\release\gilt.exe, .\sbom-spdx.json
+
+  publish:
+    name: Release
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Publish release
+        uses: houseabsolute/actions-rust-release/publish@9e126fd5fc18f4cecf358b3909f3991ad59663dc # v1.0.1
+        with:
+          executable-name: gilt
+          changes-file: ""
