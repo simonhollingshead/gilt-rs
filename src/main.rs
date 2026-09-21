@@ -500,7 +500,7 @@ fn insert_table_entries(data_table: &mut Table, rows: Vec<TableRow>, show_hidden
                     "{:6.3}%",
                     row.annualised_gross * Decimal::ONE_HUNDRED
                 ))
-                .add_attributes(style.clone())
+                .add_attributes(style)
                 .fg(colour),
                 // Don't colour or cross out this cell, it needs to be readable.
                 Cell::new(note),
