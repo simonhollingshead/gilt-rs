@@ -156,7 +156,7 @@ fn set_up_flags() -> ArgMatches {
             .value_name("PERCENTAGE_RATE")
             .value_parser(parse_tax_rate)
             .required(true)
-            .help("The marginal rate of tax paid by the individual on arising savings interest.  For example, '20' for 20% tax."),
+            .help("The rate of tax paid by the individual on arising savings interest.  For example, '20' for 20% tax."),
     )
     .arg(
         Arg::new("show-hidden-rows")
