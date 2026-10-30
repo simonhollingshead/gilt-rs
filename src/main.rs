@@ -133,10 +133,10 @@ enum SortBy {
 fn parse_tax_rate(s: &str) -> Result<Decimal, String> {
     let d: Decimal = s.parse().map_err(|e: rust_decimal::Error| e.to_string())?;
     if d < Decimal::ZERO {
-        return Err("Income tax percentage must be 0% or higher".to_string());
+        return Err("Tax percentage must be 0% or higher".to_string());
     }
     if d >= Decimal::ONE_HUNDRED {
-        return Err("Income tax percentage must be lower than 100%".to_string());
+        return Err("Tax percentage must be lower than 100%".to_string());
     }
     if d < Decimal::ONE {
         let hundred_d = (d * Decimal::ONE_HUNDRED).normalize();
@@ -149,14 +149,14 @@ fn set_up_flags() -> ArgMatches {
     let cmd = command!()
     .arg_required_else_help(true)
     .arg(
-        Arg::new("income-tax-percent")
+        Arg::new("tax-percent")
             .short('t')
-            .long("income-tax-percent")
+            .long("tax-percent")
             .action(ArgAction::Set)
             .value_name("PERCENTAGE_RATE")
             .value_parser(parse_tax_rate)
             .required(true)
-            .help("The marginal rate of tax paid by the individual on arising income.  For example, '20' for 20% tax."),
+            .help("The marginal rate of tax paid by the individual on arising savings interest.  For example, '20' for 20% tax."),
     )
     .arg(
         Arg::new("show-hidden-rows")
@@ -268,7 +268,7 @@ fn date_n_weekdays_before(date: NaiveDate, days: i8) -> NaiveDate {
 
 fn calculate_gilt_returns(
     bonds: impl Iterator<Item = Bond>,
-    income_tax_rate: Decimal,
+    interest_tax_rate: Decimal,
 ) -> Vec<TableRow> {
     // For simplicity, this calculation operates daily for midnight UTC each day, which isn't 'strictly' correct during DST.
     // In those circumstances, the data view between 0000 and 0100 AM BST may show the prior day's data - but markets won't
@@ -346,7 +346,7 @@ fn calculate_gilt_returns(
             Decimal::NEGATIVE_ONE // We will not receive the upcoming payment.
         };
 
-        // Accrued interest is bought off the prior owner but is NOT subject to income tax.
+        // Accrued interest is bought off the prior owner but is NOT subject to tax.
         let days_through_period: Decimal = (today - first_day_in_period).num_days().into();
         let days_in_period: Decimal = (last_day_in_period - first_day_in_period).num_days().into();
         let coupon_rate = bond.coupon_percent * Decimal::new(1, 2); // e.g. 2 -> 0.02
@@ -358,7 +358,7 @@ fn calculate_gilt_returns(
             * bond.lot_size;
         let total_interest = period_coupon * num_periods * bond.lot_size;
         let taxable_interest = total_interest - accrued_interest;
-        let tax_on_interest = taxable_interest * income_tax_rate;
+        let tax_on_interest = taxable_interest * interest_tax_rate;
         let dirty_price = bond.quote.clean_price + accrued_interest;
         let days_to_maturity: Decimal = (bond.maturity_date - today).num_days().into();
         let gross_receipt = bond.lot_size + total_interest;
@@ -370,8 +370,8 @@ fn calculate_gilt_returns(
         let annualised_net_return =
             net_return.powd(Decimal::new(36525, 2) / days_to_maturity) - Decimal::ONE;
         // Flag validation ensures this to be true, but let's explicitly state it here again to avoid a division by zero.
-        assert!(income_tax_rate != Decimal::ONE);
-        let grossed_up_return = annualised_net_return / (Decimal::ONE - income_tax_rate);
+        assert!(interest_tax_rate != Decimal::ONE);
+        let grossed_up_return = annualised_net_return / (Decimal::ONE - interest_tax_rate);
 
         table_rows.push(TableRow {
             isin: bond.isin,
@@ -513,8 +513,8 @@ fn main() {
     let flags = set_up_flags(); // Important to do first, because we want to fail early if the flags are not set properly.
     let bonds = get_bond_list();
 
-    let income_tax_percent: Decimal = *flags.get_one("income-tax-percent").unwrap(); // Safe because of value_parser.
-    let income_tax_rate = income_tax_percent / Decimal::ONE_HUNDRED;
+    let interest_tax_percent: Decimal = *flags.get_one("interest-tax-percent").unwrap(); // Safe because of value_parser.
+    let interest_tax_rate = interest_tax_percent / Decimal::ONE_HUNDRED;
     let mut table_rows = calculate_gilt_returns(
         bonds
             .into_iter()
@@ -525,7 +525,7 @@ fn main() {
                         .get_one("matures-no-later-than")
                         .unwrap_or(&NaiveDate::MAX)
             }),
-        income_tax_rate,
+        interest_tax_rate,
     );
 
     let table_sort_order: SortBy = *flags.get_one("order-by").unwrap();
