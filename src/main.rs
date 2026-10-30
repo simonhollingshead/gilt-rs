@@ -513,7 +513,7 @@ fn main() {
     let flags = set_up_flags(); // Important to do first, because we want to fail early if the flags are not set properly.
     let bonds = get_bond_list();
 
-    let interest_tax_percent: Decimal = *flags.get_one("interest-tax-percent").unwrap(); // Safe because of value_parser.
+    let interest_tax_percent: Decimal = *flags.get_one("tax-percent").unwrap(); // Safe because of value_parser.
     let interest_tax_rate = interest_tax_percent / Decimal::ONE_HUNDRED;
     let mut table_rows = calculate_gilt_returns(
         bonds
