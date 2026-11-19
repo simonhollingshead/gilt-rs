@@ -3,13 +3,13 @@
 use anyhow::{Result, anyhow};
 use backon::{BlockingRetryable as _, ConstantBuilder};
 use base64::{Engine, prelude::BASE64_STANDARD};
-use chrono::{Datelike, Months, NaiveDate, Utc, Weekday};
 use clap::{Arg, ArgAction, ArgMatches, ValueEnum, builder::EnumValueParser, command};
 use comfy_table::{
     Attribute, Cell, CellAlignment, Color, ColumnConstraint, ContentArrangement,
     Table, presets::UTF8_FULL,
 };
 use core::time::Duration;
+use jiff::{Timestamp, ToSpan, civil, civil::Weekday, tz::TimeZone};
 use reqwest::{
     blocking::Client,
     header::{REFERER, USER_AGENT},
@@ -20,16 +20,16 @@ use std::thread;
 use ua_generator::ua::spoof_ua;
 
 mod dmy_hyphenated {
-    use chrono::NaiveDate;
+    use jiff::civil;
     use serde::{Deserialize as _, Deserializer, de};
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<NaiveDate, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<civil::Date, D::Error>
     where
         D: Deserializer<'de>,
     {
         let deserialised_string = String::deserialize(deserializer)?;
-        let deserialised_date = NaiveDate::parse_from_str(&deserialised_string, "%d-%m-%Y")
-            .map_err(de::Error::custom)?;
+        let deserialised_date =
+            civil::Date::strptime("%d-%m-%Y", &deserialised_string).map_err(de::Error::custom)?;
         Ok(deserialised_date)
     }
 }
@@ -90,7 +90,7 @@ struct TableRow {
     coupon_rate: Decimal,
     dirty_price: Decimal,
     isin: String,
-    maturity: NaiveDate,
+    maturity: civil::Date,
     symbol: String,
     prefer_symbol: Option<String>,
     total_net: Decimal,
@@ -108,7 +108,7 @@ struct Bond {
     lot_size: Decimal,
     #[serde(with = "dmy_hyphenated")]
     #[serde(rename(deserialize = "maturityDate"))]
-    maturity_date: NaiveDate,
+    maturity_date: civil::Date,
     name: String,
     quote: Quote,
     symbol: String,
@@ -178,7 +178,7 @@ fn set_up_flags() -> ArgMatches {
         Arg::new("matures-no-later-than")
         .long("matures-no-later-than")
         .action(ArgAction::Set)
-        .value_parser(clap::value_parser!(NaiveDate))
+        .value_parser(clap::value_parser!(civil::Date))
         .help("Filters out gilts which will mature after the given YYYY-MM-DD date.")
     )
     ;
@@ -251,14 +251,14 @@ fn filter_strictly_worse_rows(rows: &mut [TableRow]) {
     }
 }
 
-fn date_n_weekdays_before(date: NaiveDate, days: i8) -> NaiveDate {
+fn date_n_weekdays_before(date: civil::Date, days: i8) -> civil::Date {
     let mut current_date = date;
     let mut days_before = 0;
     while days_before < days {
-        current_date = current_date.pred_opt().unwrap();
+        current_date = current_date.checked_sub(1.day()).unwrap();
         if matches!(
             current_date.weekday(),
-            Weekday::Mon | Weekday::Tue | Weekday::Wed | Weekday::Thu | Weekday::Fri
+            Weekday::Monday | Weekday::Tuesday | Weekday::Wednesday | Weekday::Thursday | Weekday::Friday
         ) {
             days_before += 1;
         }
@@ -273,7 +273,7 @@ fn calculate_gilt_returns(
     // For simplicity, this calculation operates daily for midnight UTC each day, which isn't 'strictly' correct during DST.
     // In those circumstances, the data view between 0000 and 0100 AM BST may show the prior day's data - but markets won't
     // be open anyway, so the AJB quote information will already be many many hours stale.  Therefore it's not a concern.
-    let today = Utc::now().date_naive();
+    let today = Timestamp::now().to_zoned_datetime(TimeZone::UTC).date();
 
     let mut table_rows = Vec::new();
     for bond in bonds {
@@ -310,7 +310,7 @@ fn calculate_gilt_returns(
             let mut num_periods = 0;
             while bond
                 .maturity_date
-                .checked_sub_months(Months::new(num_periods * 6))
+                .checked_sub((num_periods * 6).months())
                 .unwrap()
                 > today
             {
@@ -320,13 +320,13 @@ fn calculate_gilt_returns(
 
             let first_day_in_period = bond
                 .maturity_date
-                .checked_sub_months(Months::new(num_periods * 6))
+                .checked_sub((num_periods * 6).months())
                 .unwrap();
             let last_day_in_period = bond
                 .maturity_date
-                .checked_sub_months(Months::new((num_periods - 1) * 6)) // Requires num_periods > 0.
+                .checked_sub(((num_periods - 1) * 6).months()) // Requires num_periods > 0.
                 .unwrap()
-                .pred_opt()
+                .checked_sub(1.day())
                 .unwrap();
 
             (
@@ -347,8 +347,8 @@ fn calculate_gilt_returns(
         };
 
         // Accrued interest is bought off the prior owner but is NOT subject to tax.
-        let days_through_period: Decimal = (today - first_day_in_period).num_days().into();
-        let days_in_period: Decimal = (last_day_in_period - first_day_in_period).num_days().into();
+        let days_through_period: Decimal = (today - first_day_in_period).get_days().into();
+        let days_in_period: Decimal = (last_day_in_period - first_day_in_period).get_days().into();
         let coupon_rate = bond.coupon_percent * Decimal::new(1, 2); // e.g. 2 -> 0.02
         let period_coupon = coupon_rate * Decimal::new(5, 1); // Each 6-monthly period, only half the coupon is paid.
         // Note: This may end up negative, this is INTENTIONAL!
@@ -360,7 +360,7 @@ fn calculate_gilt_returns(
         let taxable_interest = total_interest - accrued_interest;
         let tax_on_interest = taxable_interest * interest_tax_rate;
         let dirty_price = bond.quote.clean_price + accrued_interest;
-        let days_to_maturity: Decimal = (bond.maturity_date - today).num_days().into();
+        let days_to_maturity: Decimal = (bond.maturity_date - today).get_days().into();
         let gross_receipt = bond.lot_size + total_interest;
         let net_receipt = gross_receipt - tax_on_interest;
         let net_return = net_receipt / dirty_price;
@@ -481,7 +481,7 @@ fn insert_table_entries(data_table: &mut Table, rows: Vec<TableRow>, show_hidden
                 Cell::new(format!("{:6.3} %", row.coupon_rate * Decimal::ONE_HUNDRED))
                     .add_attributes(style.clone())
                     .fg(colour),
-                Cell::new(row.maturity.format("%Y-%m-%d").to_string())
+                Cell::new(row.maturity.strftime("%Y-%m-%d").to_string())
                     .add_attributes(style.clone())
                     .fg(colour),
                 Cell::new(format!("\u{a3}{:7.3}", row.clean_price))
@@ -518,12 +518,12 @@ fn main() {
     let mut table_rows = calculate_gilt_returns(
         bonds
             .into_iter()
-            .filter(|b| b.maturity_date > Utc::now().date_naive())
+            .filter(|b| b.maturity_date > Timestamp::now().to_zoned_datetime(TimeZone::UTC).date())
             .filter(|b| {
                 b.maturity_date
                     <= *flags
                         .get_one("matures-no-later-than")
-                        .unwrap_or(&NaiveDate::MAX)
+                        .unwrap_or(&civil::Date::MAX)
             }),
         interest_tax_rate,
     );
